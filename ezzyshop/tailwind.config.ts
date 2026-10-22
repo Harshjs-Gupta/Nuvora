@@ -22,7 +22,7 @@ const config: Config = {
         grayGlow: "0 0 20px rgba(156,163,175,0.15)",
       },
       gold: {
-        DEFAULT: '#c8a84b',
+        DEFAULT: '#b98432',
         light:   '#e8c96d',
         muted:   '#8a7040',
         dim:     '#7a7060',
@@ -34,12 +34,10 @@ const config: Config = {
         dark:   '#111111',
         card:   '#1a1a14',
       },
-      //     fontFamily: {
-      //       serif:  ['Cormorant Garamond', 'serif'],
-      //       sans:   ['Montserrat', 'sans-serif'],
-      //     },
     },
   },
   plugins: [require("tailwindcss-textshadow")],
+  presets: [require("shadcn/tailwind")],
 };
+
 export default config;

@@ -1,51 +1,56 @@
 import Image from "next/image";
 import StartRating from "../StartRating/startRating";
-import info from "@/assets/icon/info.png";
 // import { useState } from "react";
 import { useLoading } from "@/app/loadingContext";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { doc, setDoc } from "firebase/firestore";
-import { database } from "@/lib/firebase";
-import { getAuth } from "firebase/auth";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { url } from "inspector";
+import { Product } from "@/types/productTypes";
 
 interface Props {
   products: Product;
-}
-
-interface PriceDetails {
-  before_price: number;
-  current_price: number;
-  savings_amount: number;
-  savings_percent: number;
-}
-interface Product {
-  asin: string;
-  title: string;
-  thumbnail: string;
-  reviews: {
-    rating: number;
-  };
-  price: PriceDetails;
-  url: string;
 }
 
 const SlugComponent: React.FC<Props> = ({ products }: Props) => {
   // const [searchID, setSearchID] = useState("");
   const { setLoading } = useLoading();
   const router = useRouter();
-  const { asin, title, thumbnail, reviews, price, url } = products;
-  const { before_price, current_price, savings_amount } = price;
+  const { data: session } = useSession();
+  const {
+    asin,
+    product_title,
+    product_photo,
+    product_star_rating,
+    product_price,
+    product_original_price,
+    product_url,
+    currency,
+  } = products;
+  // const { before_price, current_price, savings_amount } = price ?? {};
 
-  const discountPercentage = before_price
-    ? ((before_price - current_price) / before_price) * 100
-    : 0;
+  const parsePrice = (price: string | number | null | undefined): number => {
+    if (price === null || price === undefined) return 0;
 
-  const discount =
-    isNaN(discountPercentage) || !isFinite(discountPercentage)
-      ? 0
-      : discountPercentage;
+    const parsedPrice = parseFloat(String(price).replace(/[^\d.]/g, ""));
+
+    return Number.isNaN(parsedPrice) ? 0 : parsedPrice;
+  };
+
+  const formatPrice = (price: number) => {
+    return price.toLocaleString("en-IN");
+  };
+
+  const originalPrice = parsePrice(product_original_price);
+  const currentPrice = parsePrice(product_price);
+
+  const savings = Math.max(originalPrice - currentPrice, 0);
+
+  const discountPercentage =
+    originalPrice > 0 && currentPrice > 0
+      ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+      : 0;
 
   const fetchProductById = async (productId: string) => {
     setLoading(true);
@@ -59,7 +64,7 @@ const SlugComponent: React.FC<Props> = ({ products }: Props) => {
         // setSearchID(productId);
         // Save fetched product data in local storage and navigate to cart page
         localStorage.setItem("productDetails", JSON.stringify(data));
-        router.push("/home-page/product-details-page");
+        router.push("/products/product-details-page");
         return data;
       } else {
         toast.error(data.error);
@@ -78,25 +83,26 @@ const SlugComponent: React.FC<Props> = ({ products }: Props) => {
   }
 
   async function addToCart(productId: string) {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
+    if (!session) {
       toast.error("You must be logged in to add items to the cart.");
+      router.push("/log-in-page");
       return;
     }
 
     try {
       setLoading(true);
-      await setDoc(doc(database, "cart", productId), {
-        asin: asin,
-        title: title,
-        thumbnail: thumbnail,
-        reviews: reviews,
-        price: price,
-        userId: user.uid, // Store user ID for reference
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, quantity: 1 }),
       });
-      router.push("/home-page/cartPage");
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || "Failed to add to cart.");
+        return;
+      }
+      toast.success("Added to cart!");
+      router.push("/products/cartPage");
     } catch (err) {
       if (err instanceof Error) {
         toast.error(err.message);
@@ -107,21 +113,21 @@ const SlugComponent: React.FC<Props> = ({ products }: Props) => {
   }
 
   return (
-    <div className="flex h-auto w-full overflow-hidden border border-gold-default bg-luxury-card text-white">
+    <div className="flex h-auto w-full overflow-hidden border-b p-1.5 text-white">
       <div
-        className="flex h-auto w-[265px] cursor-pointer items-center justify-center bg-white object-cover p-2 border-r border-gold-default sm:h-64 sm:w-72"
+        className="flex h-auto w-66.25 cursor-pointer items-center justify-center bg-white object-cover sm:h-64 sm:w-72"
         onClick={handleDetailsPage}
       >
-        {thumbnail ? (
+        {product_photo ? (
           <Image
-            src={thumbnail}
-            alt={`${title} image`}
-            className="productImage h-auto w-auto rounded-sm"
+            src={product_photo}
+            alt={`${product_title} image`}
+            className="h-full w-full rounded-sm object-contain"
             width={180}
             height={100}
           />
         ) : (
-          <div className="flex h-[100px] w-[180px] flex-col items-center justify-center bg-gray-800">
+          <div className="flex h-25 w-45 flex-col items-center justify-center bg-gray-800">
             <span className="text-sm text-gray-400">Image not loaded</span>
             <span className="text-sm text-gray-400">
               Click for product Details
@@ -129,51 +135,76 @@ const SlugComponent: React.FC<Props> = ({ products }: Props) => {
           </div>
         )}
       </div>
-      <div className="flex w-96 flex-col gap-3 p-2 sm:w-full sm:p-3">
+      <div
+        className="flex w-96 flex-col gap-3 sm:w-full sm:p-3"
+        onClick={handleDetailsPage}
+      >
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gold-dim">Sponsored</span>
-            <Image src={info} alt="info" className="h-4 w-4 sm:h-5 sm:w-5" />
+          <h1 className="text-gold-default hover:text-gold-dim block cursor-pointer text-base leading-relaxed font-semibold sm:hidden md:text-2xl">
+            {product_title.length > 20
+              ? product_title.slice(0, 40) + "..."
+              : product_title}
+          </h1>
+          <h1 className="text-gold-default hover:text-gold-dim hidden cursor-pointer text-base leading-relaxed font-semibold sm:block md:text-2xl">
+            {product_title.length > 20
+              ? product_title.slice(0, 100) + "..."
+              : product_title}
+          </h1>
+          <div className="flex items-center gap-3">
+            <StartRating
+              defaultRating={Number(product_star_rating) || 0}
+              size={18}
+              maxRating={5}
+            />
+            {!product_url ? (
+              <span> </span>
+            ) : (
+              <Link
+                href={product_url}
+                target="_blank"
+                className="w-fit text-[12px] hover:underline"
+              >
+                Go to Amazon
+              </Link>
+            )}
           </div>
-          <span
-            className="cursor-pointer text-[12px] font-semibold hover:text-gold-default sm:text-[18px]"
-            onClick={handleDetailsPage}
-          >
-            {title}
-          </span>
-          <StartRating defaultRating={reviews.rating} size={20} maxRating={5} />
-          <div className="flex flex-col items-start gap-1 sm:flex-row sm:gap-2">
-            <span className="text-[12px] font-bold text-gold-light sm:text-3xl">{`Rs ${current_price}`}</span>
-            <div className="flex gap-2">
-              {before_price !== 0 && (
-                <div className="flex items-center justify-center gap-1">
-                  <span className="text-[12px] line-through text-gold-dim sm:text-xl">{`M.R.P: Rs ${before_price}`}</span>
-                </div>
+          {/* //SECTION: Price, Discount percentage, and saving amount */}
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-end gap-3">
+              {discountPercentage > 0 && (
+                <span className="text-xl font-medium text-red-400 md:text-2xl">
+                  -{discountPercentage}%
+                </span>
               )}
-              <span className="text-[12px] font-semibold text-gold-muted sm:text-xl">
-                {discount !== 0 && `(${Math.trunc(discount)}% off)`}
+
+              <span className="text-2xl font-bold md:text-3xl">
+                ₹{formatPrice(currentPrice)}
               </span>
             </div>
+
+            <div className="flex items-center gap-2">
+              {originalPrice > currentPrice && (
+                <div className="flex flex-wrap gap-2 text-sm text-gray-400">
+                  <span>M.R.P:</span>
+
+                  <span className="line-through">
+                    ₹{formatPrice(originalPrice)}
+                  </span>
+                </div>
+              )}
+
+              {savings > 0 && (
+                <span className="text-sm text-green-400">
+                  You save ₹{formatPrice(savings)}
+                </span>
+              )}
+            </div>
           </div>
-          {savings_amount !== 0 && (
-            <span className="text-[12px] text-gold-light sm:text-2xl">{`Save Rs ${savings_amount}`}</span>
-          )}
-          {!url ? (
-            <span> </span>
-          ) : (
-            <Link
-              href={url}
-              target="_blank"
-              className="text-[12px] text- hover:underline"
-            >
-              Go to Amazon
-            </Link>
-          )}
         </div>
         <div className="flex flex-col gap-2">
           <button
             onClick={() => addToCart(asin)}
-            className="h-8 w-20 rounded-full bg- hover:bg-gold-light hover:text-luxury-black text-gold-light text-[12px] font-semibold sm:h-8 sm:w-24 sm:text-sm transition-colors duration-200"
+            className="bg-gold-light hover:bg-gold-default active:bg-gold-dim text-luxury-black h-8 w-20 cursor-pointer rounded-full text-[12px] font-semibold transition-colors duration-200 sm:h-8 sm:w-24 sm:text-sm"
           >
             Add to cart
           </button>

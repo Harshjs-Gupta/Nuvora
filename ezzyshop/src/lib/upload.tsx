@@ -1,29 +1,22 @@
-import { uploadBytesResumable, getDownloadURL, ref } from "firebase/storage";
-import { storage } from "./firebase";
+/**
+ * Upload utility — Cloudinary (server-side via /api/cloudinary/upload)
+ * Previously used Firebase Storage.
+ * @deprecated For admin use only — use /api/cloudinary/upload route
+ */
+export default async function upload(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
 
-async function upload(file: File): Promise<string | null> {
-  const date = new Date();
-  const storageRef = ref(storage, `image/${date + file.name}`);
-
-  const uploadTask = uploadBytesResumable(storageRef, file);
-
-  return new Promise((resolve, reject) => {
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const progress =
-          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        console.log("Upload is " + progress + "% done");
-      },
-      (error) => {
-        reject("Something went wrong!" + error.code);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          resolve(downloadURL);
-        });
-      },
-    );
+  const res = await fetch("/api/cloudinary/upload", {
+    method: "POST",
+    body: formData,
   });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Upload failed");
+  }
+
+  const data = await res.json();
+  return data.url as string;
 }
-export default upload;

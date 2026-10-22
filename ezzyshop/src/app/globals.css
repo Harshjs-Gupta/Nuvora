@@ -5,25 +5,94 @@
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
+  font-family: "CormorantGaramond-Regular";
+  src: url("./fonts/CormorantGaramond-Regular.ttf");
+}
+
+@font-face {
   font-family: "Raleway-Medium";
   src: url("./fonts/Raleway-Medium.ttf");
 }
+@font-face {
+  font-family: "Arima-Medium";
+  src: url("./fonts/Arima-Medium.ttf");
+}
+
+@theme {
+  /* This automatically creates the 'font-custom' utility class */
+  --font-custom: 'CormorantGaramond-Regular', sans-serif;
+}
 
 body {
-  font-family: "Raleway-Medium", sans-serif;
+  font-family: "Arima-Medium", sans-serif;
   overflow-x: hidden;
 }
 
 .background {
   width: 100%;
   height: 100dvh;
-  background-image: url("../../public/image/backgroundImg/bg.avif");
+  background-image: url("/image/backgroundImg/landingBackground.png");
   background-size: cover;
   background-position: left;
 }
 
+@media screen and (max-width: 768px) {
+  .background {
+    background-image: url("/image/backgroundImg/landingBackground-mobile.png");
+    background-position: center;
+    background-size: cover;
+  }
+}
+
+.logInBackground {
+  width: 100%;
+  height: 100dvh;
+  background-image: url("/image/backgroundImg/login-bg.png");
+  background-size: cover;
+  background-position: left;
+}
+
+@media screen and (max-width: 768px) {
+  .logInBackground {
+    background-image: url("/image/backgroundImg/login-bg.png");
+    background-position: right;
+    background-size: cover;
+  }
+}
+
+@media screen and (max-width: 820px) {
+  .logInBackground {
+    background-position: right;
+    background-size: cover;
+  }
+}
+
+@media screen and (min-width: 821px) {
+  .logInBackground {
+    background-position: right;
+    background-size: cover;
+  }
+}
+
+.signUpBackground {
+  width: 100%;
+  height: 100dvh;
+  background-image: url("/image/backgroundImg/signup-bg.png");
+  background-size: cover;
+  background-position: left;
+}
+
+@media screen and (max-width: 768px) {
+  .signUpBackground {
+    background-image: url("/image/backgroundImg/signup-bg.png");
+    background-position: left;
+    background-size: cover;
+  }
+}
+
+
 .sign-up-button {
-  background: linear-gradient(135deg, #c8a84b, #8a7040);
+  background: linear-gradient(135deg, #D8A445, #8a7040);
 
   &:disabled {
     cursor: not-allowed;
@@ -36,7 +105,7 @@ body {
 }
 
 .log-in-button {
-  background: linear-gradient(135deg, #c8a84b, #8a7040);
+  background: linear-gradient(135deg, #D8A445, #8a7040);
 
   &:disabled {
     cursor: not-allowed;
@@ -74,12 +143,6 @@ body {
     display: block;
     transform: translateX(-0px);
   }
-}
-
-.productImage {
-  aspect-ratio: 3/4;
-  object-fit: contain;
-  mix-blend-mode: multiply;
 }
 
 select {

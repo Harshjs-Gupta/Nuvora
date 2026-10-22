@@ -82,7 +82,10 @@ export async function GET(request: Request) {
     });
   } catch (error: unknown) {
     return NextResponse.json(
-      { error: "Failed to fetch data.",  details: error instanceof Error ? error.message : "Unknown error", },
+      {
+        error: "Failed to fetch data.",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     );
   }

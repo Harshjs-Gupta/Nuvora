@@ -10,9 +10,7 @@ import {
   Legend,
 } from "recharts";
 import { RechartsDevtools } from "@recharts/devtools";
-import { auth, database } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { useSession } from "next-auth/react";
 
 // * Sample data
 const data = [
@@ -155,22 +153,9 @@ const salesGrowthData = [
 
 export default function Dashboard() {
   const [isActive, setIsActive] = useState(0);
-  const [userName, setUserName] = useState("Admin");
+  const { data: session } = useSession();
+  const userName = session?.user?.name ?? "Admin";
 
-  async function getUser() {
-    const storedUser = JSON.parse(localStorage.getItem("user") ?? "null");
-    if (!storedUser?.email || !storedUser?.password) return;
-    const res = await signInWithEmailAndPassword(auth, storedUser.email, storedUser.password);
-    const docSnap = await getDoc(doc(database, "users", res.user.uid));
-    console.log(res, docSnap);
-  }
-
-  useEffect(() => {
-  const raw = localStorage.getItem("user");
-  const storedUser = raw ? JSON.parse(raw) : null;
-  if (storedUser?.name) setUserName(storedUser.name);
-  getUser() 
-  },[])
 
   return (
     <section className="overflow-y-scroll px-4 sm:px-6">

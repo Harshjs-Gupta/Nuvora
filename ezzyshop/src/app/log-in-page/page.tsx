@@ -1,15 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import style from "./log-in.module.css";
-import appName from "@/assets/logo/appName.png";
-import tShirt from "../../../public/image/tshirt.png";
-import cart from "../../../public/image/cart-with-shopping-bag.png";
 import { FormEvent, useEffect, useState } from "react";
 import GoogleLogo from "@/assets/logo/google_logo.png";
 import { toast } from "react-toastify";
-import { auth, provider } from "@/lib/firebase";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 function LogInPage() {
@@ -17,56 +12,44 @@ function LogInPage() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const router = useRouter();
-
-  const handleGoogleAuth = () => {
-    signInWithPopup(auth, provider)
-      .then((data) => {
-        console.log(data);
-        const email = data.user.email;
-        if (email) {
-          setEmail(email);
-          localStorage.setItem("user", JSON.stringify({
-            id: "usr_123",
-            email: email,
-            name:  email.split("@")[0].replace(/\d+/g, ""),
-          }),);
-        } else {
-          toast.error("No email associated with this account.");
-        }
-        router.push("/home-page");
-      })
-      .catch((err) => {
-        console.log(err);
-        toast.error(err.message);
-      });
-  };
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    const storedEmail = localStorage.getItem("email");
-    if (storedEmail) {
-      router.push("/home-page");
+    if (status === "authenticated") {
+      router.push("/products");
     }
-  }, [router]);
+  }, [status, router]);
+
+  const handleGoogleAuth = async () => {
+    await signIn("google", { callbackUrl: "/products" });
+  };
 
   async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
-    const formData = new FormData(e.currentTarget);
 
+    const formData = new FormData(e.currentTarget);
     const { email, password } = Object.fromEntries(formData.entries()) as {
       email: string;
       password: string;
     };
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success("You logged in Successfully!");
-      router.push("/home-page");
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.log(err);
-        toast.error(err.message);
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Invalid email or password.");
+      } else {
+        toast.success("Logged in successfully!");
+        router.push("/products");
       }
+    } catch (err) {
+      console.error(err);
+      toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
       setEmail("");
@@ -74,66 +57,76 @@ function LogInPage() {
     }
   }
 
+  if (status === "loading") {
+    return (
+      <div className="from-luxury-dark to-luxury-black flex h-screen items-center justify-center bg-linear-to-r">
+        <div className="border-gold-default h-10 w-10 animate-spin rounded-full border-4 border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
-    <div className={`${style.background} animation relative h-screen w-screen`}>
-      <Image
-        src={appName}
-        alt="appName"
-        className="sm:h-30 h-18 w-32 sm:w-52"
-      />
-      <div className="flex h-full w-full flex-col items-center justify-between gap-5 sm:flex sm:h-96 sm:flex-row sm:items-center sm:justify-between">
+    <main className="logInBackground animation">
+      {/* Logo */}
+      <div className="relative flex h-20 w-full justify-between p-4">
         <Image
-          src={cart}
-          alt="cart"
+          src="/nuvora.png"
           loading="lazy"
-          className={`${style.cart_animation} h-40 w-40 sm:h-80 sm:w-80`}
+          alt="product"
+          width={600}
+          height={1200}
+          placeholder="blur"
+          blurDataURL="/blur.jpg"
+          className="h-10 w-40 object-cover"
         />
-        <div className="animation flex h-80 w-72 flex-col items-center justify-center rounded-3xl border border-gold-dim bg-luxury-card p-5 text-white">
+      </div>
+      {/* Log in Form */}
+      <div className="mt-52 flex flex-col items-center justify-center gap-6 text-[#9b9996] xl:mt-10">
+        <div className="animation bg-luxury-card/90 xl:bg-luxury-card/50 flex h-80 w-72 flex-col items-center justify-center rounded-3xl border border-[#B98432] p-5 text-white">
+          {/* Google Auth button */}
           <button
-            className={`${style.google_log_in} flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-gold-dim hover:bg-gray-500/20 active:bg-gray-500/30`}
+            id="btn-google-signin"
+            className={`text-gold-dim hover:bg-gold-deep/40 active:bg-gold-deep/70 flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#B98432] transition`}
             onClick={handleGoogleAuth}
           >
             <Image src={GoogleLogo} alt="GoogleLogo" className="w-6" />
-            <span>Sign Up with Google</span>
+            <span>Sign in with Google</span>
           </button>
-          <span className="p-2">Or</span>
-          <form className="flex flex-col space-y-5" onSubmit={handleLogin}>
+          <span className="p-2 text-[#9b9996]">Or</span>
+          <form id="form-login" className="flex flex-col space-y-5" onSubmit={handleLogin}>
             <input
               type="email"
               name="email"
+              id="input-email"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-10 w-64 rounded-lg border border-gold-dim bg-transparent p-2 outline-none placeholder:text-gray-300 focus:outline-none"
+              className="placeholder:text-gold-dim h-10 w-64 rounded-lg border border-[#B98432] bg-transparent p-2 outline-none focus:outline-none"
             />
             <input
               type="password"
               name="password"
+              id="input-password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-10 w-64 rounded-lg border border-gold-dim bg-transparent p-2 outline-none placeholder:text-gray-300 focus:outline-none"
+              className="placeholder:text-gold-dim h-10 w-64 rounded-lg border border-[#B98432] bg-transparent p-2 outline-none focus:outline-none"
             />
             <div className="animation flex flex-col items-center justify-center gap-4">
               <button
+                id="btn-login-submit"
                 disabled={!!isLoading}
-                className="log-in-button flex h-10 w-40 items-center cursor-pointer justify-center rounded-full border border-black p-2 font-bold text-black"
+                className="flex h-10 w-40 cursor-pointer items-center justify-center rounded-full bg-[#D9A54B] p-2 font-bold text-black hover:bg-[#b98332ce] active:bg-[#b9833299]"
               >
-                {isLoading ? "In Process..." : "Login"}
+                <span className={`${isLoading ? "animate-caret-blink" : ""}`}>
+                  {isLoading ? "In Process..." : "Login"}
+                </span>
               </button>
             </div>
           </form>
         </div>
-        <div>
-          <Image
-            src={tShirt}
-            alt="tShirtImage"
-            loading="lazy"
-            className={`${style.tShirt} relative bottom-16 sm:relative sm:bottom-36`}
-          />
-        </div>
       </div>
-    </div>
+    </main>
   );
 }
 

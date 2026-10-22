@@ -21,7 +21,7 @@ function useFetch(search: string | null) {
 
         if (response.ok) {
           localStorage.setItem("products", JSON.stringify(data));
-          router.push(`/home-page/${search}`);
+          router.push(`/products/${search}`);
         } else {
           toast.error(data.error);
         }

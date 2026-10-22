@@ -28,7 +28,7 @@ function SlugProduct() {
   // console.log(products);
 
   return (
-    <div className="productContainer flex flex-col gap-5 p-3">
+    <div className="productContainer bg-luxury-card flex flex-col gap-5 p-3">
       {uniqueItems.map((item) => (
         <div key={item.asin} className="productsItem">
           <SlugComponent products={item} />
